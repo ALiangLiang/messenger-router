@@ -158,12 +158,12 @@ Router.prototype.handle = function handle(req, res, callback) {
     throw new TypeError('argument callback is required')
   }
 
-  debug('dispatching %s %s', req.method, req.payload)
+  debug('dispatching %s %s', req.method, req.data[0].payload)
 
   var idx = 0
   var removed = ''
   var self = this
-  var slashAdded = false //req.payload.substr(0, 1) === '/'
+  var slashAdded = false //req.data[0].payload.substr(0, 1) === '/'
   var paramcalled = {}
 
   // middleware and routes
@@ -174,7 +174,10 @@ Router.prototype.handle = function handle(req, res, callback) {
   var done = restore(callback, req, 'next', 'params')
 
   // setup query
-  //req.query = qs.parse(url.parse(req.payload).query)
+  if (req.data && req.data[0] && req.data[0].payload) {
+    req.query = qs.parse(url.parse(req.data[0].payload).query)
+    console.log(req.query)
+  }
 
   // setup next layer
   req.next = next
@@ -188,7 +191,7 @@ Router.prototype.handle = function handle(req, res, callback) {
 
     // remove added slash
     if (slashAdded) {
-      req.payload = req.payload.substr(1)
+      req.payload = req.data[0].payload.substr(1)
       slashAdded = false
     }
 
@@ -210,7 +213,7 @@ Router.prototype.handle = function handle(req, res, callback) {
     }
 
     // get pathname of request
-    var path = getPathname(req.payload)
+    var path = getPathname(req.data[0].payload)
 
     if (path == null) {
       return done(layerError)
@@ -288,7 +291,7 @@ Router.prototype.handle = function handle(req, res, callback) {
 
       // Trim off the part of the payload that matches the route
       // middleware (.use stuff) needs to have the path stripped
-      debug('trim prefix (%s) from payload %s', layerPath, req.payload)
+      debug('trim prefix (%s) from payload %s', layerPath, req.data[0].payload)
       removed = layerPath
     }
 
@@ -502,7 +505,7 @@ methods.concat('all').forEach(function(method) {
   else
     Router.prototype[method] = function() {
       var route = this.route('/*')
-      route[method].apply(route, slice.call(arguments))
+      route[method].apply(route, slice.call(arguments, 0))
       return this
     }
 })
@@ -514,7 +517,7 @@ methods.concat('all').forEach(function(method) {
  * @private
  */
 
-function getPathname(payload) {
+function getPathname(payload = '/foo') {
   try {
     return url.parse(payload).pathname;
   } catch (err) {
